@@ -43,6 +43,11 @@ if (app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("Swa
 app.UseExceptionHandler();
 app.UseCors("AllowFrontend");
 app.MapHealthChecks("/health");
+app.MapGet("/api/status", () => Results.Ok(new
+{
+    status = "ok",
+    service = "OnTime API"
+}));
 app.MapControllers();
 
 using var scope = app.Services.CreateScope();

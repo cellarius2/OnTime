@@ -13,22 +13,22 @@ const api = axios.create({
 });
 
 export const chatWithJonas = (message: string, history: Array<{ role: string; content: string }>) =>
-    api.post('/chat', { message, history });
+    api.post('/api/chat', { message, history });
 
 export const getSchedules = () =>
-    api.get<Schedule[]>('/schedule');
+    api.get<Schedule[]>('/api/schedule');
 
 export const createSchedule = (schedule: Omit<Schedule, 'id' | 'createdAt'>) =>
-    api.post<Schedule>('/schedule', schedule);
+    api.post<Schedule>('/api/schedule', schedule);
 
 export const updateSchedule = (id: string, schedule: Partial<Schedule>) =>
-    api.put<Schedule>(`/schedule/${id}`, schedule);
+    api.put<Schedule>(`/api/schedule/${id}`, schedule);
 
 export const toggleSchedule = (id: string) =>
-    api.patch<Schedule>(`/schedule/${id}/toggle`);
+    api.patch<Schedule>(`/api/schedule/${id}/toggle`);
 
 export const deleteSchedule = (id: string) =>
-    api.delete(`/schedule/${id}`);
+    api.delete(`/api/schedule/${id}`);
 
 export const getConversations = () =>
-    api.get('/conversation');
+    api.get('/api/conversation');

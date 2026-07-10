@@ -23,10 +23,10 @@ public class Schedule
 
     public bool Active { get; set; } = true;
 
-    [Url]
+    [RegularExpression("^$|^https://.+", ErrorMessage = "Informe uma URL HTTPS válida.")]
     public string DiscordWebhookUrl { get; set; } = string.Empty;
 
-    [Url]
+    [RegularExpression("^$|^https://.+", ErrorMessage = "Informe uma URL HTTPS válida.")]
     public string GoogleChatWebhookUrl { get; set; } = string.Empty;
 
     [RegularExpression("discord|googleChat|both")]

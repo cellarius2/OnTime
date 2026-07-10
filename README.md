@@ -62,7 +62,7 @@ O Swagger fica disponível no endereço exibido pelo .NET quando o ambiente é `
 Entre em `OnTime-frontend`, copie `.env.example` para `.env.local` e use a URL da API:
 
 ```env
-VITE_API_URL=http://localhost:5120/api
+VITE_API_URL=http://localhost:5120
 ```
 
 Depois execute:
@@ -94,6 +94,7 @@ As URLs podem ser informadas nas configurações da interface. Use webhooks de c
 | `POST` | `/api/chat` | Envia uma mensagem ao Jonas. |
 | `GET` | `/api/conversation` | Lista as 20 conversas mais recentes. |
 | `GET` | `/health` | Verifica a disponibilidade da API. |
+| `GET` | `/api/status` | Retorna o status público do serviço. |
 
 ## Screenshots
 
