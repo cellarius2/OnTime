@@ -111,10 +111,4 @@ Projeto funcional em preparação para portfólio. Não há autenticação de us
 - Armazenamento seguro de webhooks no servidor.
 - Monitoramento e observabilidade de produção.
 
-## Segurança
 
-Secrets reais, tokens, senhas, connection strings de produção e webhooks nunca devem ser versionados. Use variáveis de ambiente, Secret Manager no desenvolvimento .NET e o cofre de secrets da plataforma de hospedagem.
-
-## Licença
-
-Consulte o arquivo `OnTime.API/LICENSE`.
