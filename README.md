@@ -48,7 +48,7 @@ PowerShell:
 
 ```powershell
 $env:ConnectionStrings__DefaultConnection = "Data Source=ontime.db"
-$env:N8N_CHAT_WEBHOOK_URL = "https://seu-n8n.exemplo/webhook/jonas-chat"
+$env:N8n__ChatWebhookUrl = "https://seu-n8n.exemplo/webhook/jonas-chat"
 $env:N8n__ReminderMessageWebhookUrl = "https://seu-n8n.exemplo/webhook/jonas-reminder"
 $env:Cors__AllowedOrigins__0 = "http://localhost:5173"
 dotnet restore
@@ -76,7 +76,7 @@ npm run dev
 
 ### n8n
 
-O back-end usa dois webhooks: um para conversar com o Jonas e outro para gerar a mensagem final do lembrete. Configure-os por `N8N_CHAT_WEBHOOK_URL` e `N8n__ReminderMessageWebhookUrl`. Sem o webhook de chat, o Jonas responde com uma mensagem amigável de contingência; sem o webhook de lembrete, a mensagem informada pelo usuário é preservada.
+O back-end usa dois webhooks: um para conversar com o Jonas e outro para gerar a mensagem final do lembrete. Configure-os por `N8n__ChatWebhookUrl` e `N8n__ReminderMessageWebhookUrl`. Sem o webhook de chat, o Jonas responde com uma mensagem amigável de contingência; sem o webhook de lembrete, a mensagem informada pelo usuário é preservada.
 
 ### Discord e Google Chat
 

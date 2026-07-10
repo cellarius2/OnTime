@@ -8,7 +8,7 @@ public class N8nService(HttpClient http, IConfiguration config, ILogger<N8nServi
     private const string AutomationFallback =
         "Estou com minha automação temporariamente indisponível, mas ainda posso te ajudar a organizar seus lembretes. Tente criar um lembrete manualmente pelo painel ao lado.";
 
-    private readonly string _chatWebhook = config["N8N_CHAT_WEBHOOK_URL"] ?? string.Empty;
+    private readonly string _chatWebhook = config["N8n:ChatWebhookUrl"] ?? string.Empty;
     private readonly string _reminderWebhook = config["N8n:ReminderMessageWebhookUrl"] ?? string.Empty;
 
     public bool IsChatConfigured => IsValidWebhook(_chatWebhook);
@@ -16,6 +16,10 @@ public class N8nService(HttpClient http, IConfiguration config, ILogger<N8nServi
 
     public async Task<ChatResponse> SendChatMessageAsync(ChatRequest request)
     {
+        logger.LogInformation(
+            "Configuração do webhook de chat do n8n: {ConfigurationStatus}.",
+            IsChatConfigured ? "carregada" : "não carregada");
+
         if (!IsChatConfigured)
         {
             logger.LogWarning("Webhook de chat do n8n ausente ou inválido.");
