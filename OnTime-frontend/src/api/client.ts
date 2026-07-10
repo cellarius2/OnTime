@@ -9,7 +9,7 @@ if (!apiUrl) {
 
 const api = axios.create({
     baseURL: apiUrl,
-    timeout: 15_000,
+    timeout: 45_000,
 });
 
 export const chatWithJonas = (message: string, history: Array<{ role: string; content: string }>) =>

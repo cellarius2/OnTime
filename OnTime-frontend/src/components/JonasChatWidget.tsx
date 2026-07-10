@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import axios from 'axios';
 import type { ChatMessage, JonasResponse, NotificationService } from '../types';
 import { chatWithJonas } from '../api/client';
 import jonasMark from '../assets/jonas-mark.png';
@@ -190,11 +191,15 @@ export function JonasChatWidget({
     } catch (error) {
       console.error('Erro ao conversar com Jonas:', error);
 
+      const errorMessage = axios.isAxiosError(error) && error.code === 'ECONNABORTED'
+        ? 'Minha automação demorou um pouquinho para responder. Tente enviar novamente em alguns segundos.'
+        : 'Não consegui falar com minha automação agora. Tente novamente em alguns segundos.';
+
       setMessages(previous => [
         ...previous,
         {
           role: 'jonas',
-          content: 'Tive um problema de conexão. Verifica se a API está rodando.',
+          content: errorMessage,
         },
       ]);
     } finally {

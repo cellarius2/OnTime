@@ -9,14 +9,6 @@ public class ChatController(N8nService n8n, AppDbContext db) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Chat([FromBody] ChatRequest request)
     {
-        if (!n8n.IsChatConfigured)
-        {
-            return Problem(
-                statusCode: StatusCodes.Status503ServiceUnavailable,
-                title: "Integração indisponível",
-                detail: "O webhook de chat do n8n não está configurado.");
-        }
-
         var raw = await n8n.SendChatMessageAsync(request);
 
         var text = ExtractString(raw.Text, "text") ?? raw.Text?.ToString() ?? "";

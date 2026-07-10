@@ -3,44 +3,98 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using OnTime.API.Models;
 
-public class N8nService(HttpClient http, IConfiguration config)
+public class N8nService(HttpClient http, IConfiguration config, ILogger<N8nService> logger)
 {
-    private readonly string _chatWebhook = config["N8n:ChatWebhookUrl"] ?? string.Empty;
+    private const string AutomationFallback =
+        "Estou com minha automação temporariamente indisponível, mas ainda posso te ajudar a organizar seus lembretes. Tente criar um lembrete manualmente pelo painel ao lado.";
+
+    private readonly string _chatWebhook = config["N8N_CHAT_WEBHOOK_URL"] ?? string.Empty;
     private readonly string _reminderWebhook = config["N8n:ReminderMessageWebhookUrl"] ?? string.Empty;
 
-    public bool IsChatConfigured => Uri.TryCreate(_chatWebhook, UriKind.Absolute, out _);
+    public bool IsChatConfigured => IsValidWebhook(_chatWebhook);
     public bool IsReminderConfigured => Uri.TryCreate(_reminderWebhook, UriKind.Absolute, out _);
 
     public async Task<ChatResponse> SendChatMessageAsync(ChatRequest request)
     {
         if (!IsChatConfigured)
-            throw new InvalidOperationException("O webhook de chat do n8n não está configurado.");
-
-        var response = await http.PostAsJsonAsync(_chatWebhook, request);
-        response.EnsureSuccessStatusCode();
-
-        var content = await response.Content.ReadAsStringAsync();
-        if (string.IsNullOrWhiteSpace(content))
-            return Fallback("O Jonas está dormindo... Aguarde um pouco e ele já levanta! 🦔");
-
-        var json = ExtractJson(content);
-        if (json is not null)
         {
-            var parsed = TryDeserializeChatResponse(json);
+            logger.LogWarning("Webhook de chat do n8n ausente ou inválido.");
+            return Fallback(AutomationFallback);
+        }
 
-            if (parsed is not null)
+        try
+        {
+            using var response = await http.PostAsJsonAsync(_chatWebhook, request);
+            response.EnsureSuccessStatusCode();
+
+            var content = await response.Content.ReadAsStringAsync();
+            return ParseChatResponse(content);
+        }
+        catch (TaskCanceledException)
+        {
+            logger.LogWarning("Timeout ao consultar a automação de chat do n8n.");
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogWarning("Falha HTTP ao consultar a automação de chat do n8n. Status: {StatusCode}", ex.StatusCode);
+        }
+        catch (JsonException)
+        {
+            logger.LogWarning("Resposta inválida recebida da automação de chat do n8n.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError("Falha inesperada ao consultar a automação de chat do n8n. Tipo: {ErrorType}", ex.GetType().Name);
+        }
+
+        return Fallback(AutomationFallback);
+    }
+
+    private static ChatResponse ParseChatResponse(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return Fallback(AutomationFallback);
+
+        var cleaned = CleanText(content);
+
+        if (!cleaned.StartsWith('{') && !cleaned.StartsWith('[') && !cleaned.StartsWith('"'))
+            return Fallback(cleaned);
+
+        using var document = JsonDocument.Parse(cleaned);
+        var root = document.RootElement;
+
+        if (root.ValueKind == JsonValueKind.String)
+            return Fallback(root.GetString() ?? AutomationFallback);
+
+        if (root.ValueKind != JsonValueKind.Object)
+            throw new JsonException("Formato de resposta do n8n não suportado.");
+
+        foreach (var propertyName in new[] { "response", "message", "text" })
+        {
+            if (root.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String)
             {
-                var inner = TryExtractInnerResponse(parsed);
-
-                if (inner is not null)
-                    return inner;
-
-                return NormalizeResponse(parsed);
+                var parsed = JsonSerializer.Deserialize<ChatResponse>(cleaned, JsonOptions());
+                var result = parsed is null ? Fallback(value.GetString() ?? AutomationFallback) : NormalizeResponse(parsed);
+                result.Text = value.GetString() ?? AutomationFallback;
+                return result;
             }
         }
 
-        return Fallback(CleanText(content));
+        var response = JsonSerializer.Deserialize<ChatResponse>(cleaned, JsonOptions())
+            ?? throw new JsonException("Resposta vazia do n8n.");
+
+        var inner = TryExtractInnerResponse(response);
+        return inner ?? NormalizeResponse(response);
     }
+
+    private static JsonSerializerOptions JsonOptions() => new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    private static bool IsValidWebhook(string value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri)
+        && uri.Scheme == Uri.UriSchemeHttps;
 
     public async Task<string> GenerateReminderMessageAsync(Schedule schedule)
     {
