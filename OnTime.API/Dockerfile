@@ -3,8 +3,6 @@ WORKDIR /src
 
 COPY . .
 
-WORKDIR /src/OnTime.API
-
 RUN dotnet restore OnTime.API.csproj
 RUN dotnet publish OnTime.API.csproj -c Release -o /app/publish
 
