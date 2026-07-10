@@ -1,0 +1,42 @@
+# Front-end
+node_modules/
+dist/
+build/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# Back-end .NET
+bin/
+obj/
+.vs/
+TestResults/
+artifacts/
+*.user
+*.suo
+*.db
+*.db-shm
+*.db-wal
+
+# Configuracoes locais e secrets
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+
+# Logs e temporarios
+logs/
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# IDE e sistema operacional
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

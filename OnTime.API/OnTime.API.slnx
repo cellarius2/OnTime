@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/Itens de Solução/">
+    <File Path="global.json" />
+  </Folder>
+  <Folder Name="/ontime-frontend/" />
+  <Project Path="../../../../source/OnTime.API/OnTime.API/OnTime.API.csproj" />
+</Solution>
