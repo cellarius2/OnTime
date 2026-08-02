@@ -12,6 +12,7 @@ obj/
 .vs/
 TestResults/
 artifacts/
+out/
 *.user
 *.suo
 *.db

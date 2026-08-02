@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: ontime-api
+    runtime: docker
+    rootDir: OnTime.API
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Cors__AllowedOrigins
+        sync: false
+      - key: N8n__ChatWebhookUrl
+        sync: false
+      - key: N8n__ReminderMessageWebhookUrl
+        sync: false
+      - key: Swagger__Enabled
+        value: "true"
+      - key: Database__MigrateOnStartup
+        value: "false"

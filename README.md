@@ -4,7 +4,7 @@ OnTime é uma aplicação de lembretes de ponto com o Jonas, um assistente que a
 
 ## Objetivo
 
-O projeto demonstra a integração entre uma interface React, uma API .NET, persistência com SQLite e automações externas via n8n. O foco é oferecer uma experiência simples para cadastrar, editar, ativar e excluir lembretes.
+O projeto demonstra a integração entre uma interface React, uma API .NET, persistência com PostgreSQL e automações externas via n8n. O foco é oferecer uma experiência simples para cadastrar, editar, ativar e excluir lembretes.
 
 ## Funcionalidades
 
@@ -18,7 +18,7 @@ O projeto demonstra a integração entre uma interface React, uma API .NET, pers
 ## Tecnologias
 
 - Front-end: React 19, TypeScript, Vite, Axios e React Icons.
-- Back-end: .NET 8, ASP.NET Core, Entity Framework Core e SQLite.
+- Back-end: .NET 8, ASP.NET Core, Entity Framework Core e PostgreSQL.
 - Integrações: n8n, Discord e Google Chat por webhooks.
 - Documentação da API: Swagger, habilitado em desenvolvimento.
 
@@ -47,10 +47,10 @@ Entre em `OnTime.API` e configure os valores sensíveis com variáveis de ambien
 PowerShell:
 
 ```powershell
-$env:ConnectionStrings__DefaultConnection = "Data Source=ontime.db"
+$env:ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=ontime;Username=postgres;Password=SENHA_LOCAL"
 $env:N8n__ChatWebhookUrl = "https://seu-n8n.exemplo/webhook/jonas-chat"
 $env:N8n__ReminderMessageWebhookUrl = "https://seu-n8n.exemplo/webhook/jonas-reminder"
-$env:Cors__AllowedOrigins__0 = "http://localhost:5173"
+$env:Cors__AllowedOrigins = "http://localhost:5173"
 dotnet restore
 dotnet run
 ```
@@ -62,7 +62,7 @@ O Swagger fica disponível no endereço exibido pelo .NET quando o ambiente é `
 Entre em `OnTime-frontend`, copie `.env.example` para `.env.local` e use a URL da API:
 
 ```env
-VITE_API_URL=http://localhost:5120
+VITE_API_URL=http://localhost:5120/api
 ```
 
 Depois execute:
@@ -81,6 +81,12 @@ O back-end usa dois webhooks: um para conversar com o Jonas e outro para gerar a
 ### Discord e Google Chat
 
 As URLs podem ser informadas nas configurações da interface. Use webhooks de canais de teste durante o desenvolvimento, restrinja quem pode vê-los e revogue imediatamente qualquer URL exposta. Nunca inclua webhooks reais no código, em screenshots ou em commits.
+
+## Deploy no Render
+
+O arquivo `render.yaml` configura um Web Service Docker com .NET 8, usando `OnTime.API` como diretório raiz e `/health` como health check. No painel, preencha `ConnectionStrings__DefaultConnection`, use `https://ontime-virid.vercel.app,http://localhost:5173` em `Cors__AllowedOrigins` e configure `N8n__ChatWebhookUrl` e `N8n__ReminderMessageWebhookUrl`. A connection string do Supabase deve usar SSL (`SSL Mode=Require`).
+
+As migrations existentes foram criadas originalmente para SQLite e, por segurança, não são executadas automaticamente no PostgreSQL. Confirme o schema já existente no Supabase antes de habilitar `Database__MigrateOnStartup` ou gerar migrations específicas para PostgreSQL.
 
 ## Endpoints principais
 

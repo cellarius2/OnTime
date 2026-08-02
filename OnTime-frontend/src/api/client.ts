@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { Schedule } from '../types';
 
-const apiUrl = import.meta.env.VITE_API_URL?.trim();
+const apiUrl = import.meta.env.VITE_API_URL?.trim().replace(/\/+$/, '');
 
 if (!apiUrl) {
     console.warn('VITE_API_URL não foi configurada. As chamadas à API não funcionarão.');
@@ -13,22 +13,22 @@ const api = axios.create({
 });
 
 export const chatWithJonas = (message: string, history: Array<{ role: string; content: string }>) =>
-    api.post('/api/chat', { message, history });
+    api.post('/chat', { message, history });
 
 export const getSchedules = () =>
-    api.get<Schedule[]>('/api/schedule');
+    api.get<Schedule[]>('/schedule');
 
 export const createSchedule = (schedule: Omit<Schedule, 'id' | 'createdAt'>) =>
-    api.post<Schedule>('/api/schedule', schedule);
+    api.post<Schedule>('/schedule', schedule);
 
 export const updateSchedule = (id: string, schedule: Partial<Schedule>) =>
-    api.put<Schedule>(`/api/schedule/${id}`, schedule);
+    api.put<Schedule>(`/schedule/${id}`, schedule);
 
 export const toggleSchedule = (id: string) =>
-    api.patch<Schedule>(`/api/schedule/${id}/toggle`);
+    api.patch<Schedule>(`/schedule/${id}/toggle`);
 
 export const deleteSchedule = (id: string) =>
-    api.delete(`/api/schedule/${id}`);
+    api.delete(`/schedule/${id}`);
 
 export const getConversations = () =>
-    api.get('/api/conversation');
+    api.get('/conversation');
