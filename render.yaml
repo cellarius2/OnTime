@@ -19,6 +19,18 @@ services:
         sync: false
       - key: N8n__ReminderMessageWebhookUrl
         sync: false
+      - key: JonasAi__Provider
+        value: N8n
+      - key: JonasAi__OllamaUrl
+        sync: false
+      - key: JonasAi__Model
+        value: deepseek-r1:8b
+      - key: JonasAi__TimeoutSeconds
+        value: "300"
+      - key: JonasAi__ReminderTimeoutSeconds
+        value: "45"
+      - key: JonasAi__DispatchToken
+        sync: false
       - key: Swagger__Enabled
         value: "true"
       - key: Database__MigrateOnStartup

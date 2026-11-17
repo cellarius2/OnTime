@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: OnTime-frontend/package-lock.json
+      - run: dotnet restore OnTime.API/OnTime.API.csproj
+      - run: dotnet build OnTime.API/OnTime.API.csproj -c Release --no-restore
+      - run: dotnet publish OnTime.API/OnTime.API.csproj -c Release --no-build -o artifacts/publish
+      - run: dotnet test OnTime.API.Tests/OnTime.API.Tests.csproj -c Release
+      - run: dotnet list OnTime.API/OnTime.API.csproj package --vulnerable --include-transitive
+      - working-directory: OnTime-frontend
+        run: npm ci
+      - working-directory: OnTime-frontend
+        run: npm run check
+      - working-directory: OnTime-frontend
+        run: npm audit --omit=dev --audit-level=high

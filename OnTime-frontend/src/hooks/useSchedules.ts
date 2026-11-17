@@ -8,7 +8,7 @@ export interface ManualScheduleInput {
   id?: string;
   title: string;
   description?: string;
-  day: string;
+  days: string[];
   time: string;
   notificationService: NotificationService;
   active: boolean;
@@ -28,6 +28,16 @@ const writeLocalSchedules = (schedules: Schedule[]) => {
   localStorage.setItem(LOCAL_SCHEDULES_KEY, JSON.stringify(schedules));
 };
 
+const scheduleKey = (days: string | string[], time: string, message: string) => {
+  const normalizedDays = (Array.isArray(days) ? days : days.split(','))
+    .map(day => day.trim().toLowerCase())
+    .filter(Boolean)
+    .sort()
+    .join(',');
+
+  return `${normalizedDays}|${time.trim()}|${message.trim().toLowerCase()}`;
+};
+
 const mergeSchedules = (apiSchedules: Schedule[], localSchedules: Schedule[]) => {
   const seen = new Set<string>();
 
@@ -42,6 +52,7 @@ const mergeSchedules = (apiSchedules: Schedule[], localSchedules: Schedule[]) =>
 export function useSchedules() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
     const localSchedules = readLocalSchedules();
@@ -49,7 +60,12 @@ export function useSchedules() {
     api
       .getSchedules()
       .then(res => setSchedules(mergeSchedules(res.data, localSchedules)))
-      .catch(() => setSchedules(localSchedules))
+      .catch(error => {
+        if (api.isApiConfigurationError(error)) {
+          setApiError(error.message);
+        }
+        setSchedules(localSchedules);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -58,7 +74,19 @@ export function useSchedules() {
     _webhookUrl: string,
     notificationService: NotificationService = 'discord'
   ) => {
+    const batchStartedAt = performance.now();
     const created: Schedule[] = [];
+    let remote = 0;
+    let local = 0;
+    let skipped = 0;
+    const remoteItems: string[] = [];
+    const localItems: string[] = [];
+    const skippedItems: string[] = [];
+    const describe = (schedule: { time: string; message: string }) =>
+      `${schedule.message} às ${schedule.time}`;
+    const existingKeys = new Set(
+      schedules.map(schedule => scheduleKey(schedule.days, schedule.time, schedule.title ?? schedule.message))
+    );
 
     const discordWebhookUrl = localStorage.getItem('ontime_discord_webhook') ?? '';
     const googleChatWebhookUrl = localStorage.getItem('ontime_googlechat_webhook') ?? '';
@@ -71,6 +99,14 @@ export function useSchedules() {
           : notificationService;
 
     for (const schedule of newOnes) {
+      const key = scheduleKey(schedule.days, schedule.time, schedule.message);
+      if (existingKeys.has(key)) {
+        skipped += 1;
+        skippedItems.push(describe(schedule));
+        continue;
+      }
+      existingKeys.add(key);
+
       const payload = {
         days: schedule.days.join(','),
         time: schedule.time,
@@ -83,15 +119,34 @@ export function useSchedules() {
         notificationService: finalNotificationService,
       };
 
+      const creationStartedAt = performance.now();
       try {
         const res = await api.createSchedule(payload);
+        console.info('Lembrete criado pela API', {
+          time: schedule.time,
+          durationMs: Math.round(performance.now() - creationStartedAt),
+        });
         created.push(res.data);
-      } catch {
+        remote += 1;
+        remoteItems.push(describe(schedule));
+      } catch (error) {
+        console.warn('Falha ao criar lembrete pela API', {
+          time: schedule.time,
+          durationMs: Math.round(performance.now() - creationStartedAt),
+          errorType: error instanceof Error ? error.name : 'unknown',
+        });
+        if (api.isApiConfigurationError(error)) {
+          setApiError(error.message);
+          throw error;
+        }
+
         created.push({
           ...payload,
           id: `local-${crypto.randomUUID()}`,
           createdAt: new Date().toISOString(),
         });
+        local += 1;
+        localItems.push(describe(schedule));
       }
     }
 
@@ -100,6 +155,16 @@ export function useSchedules() {
       writeLocalSchedules(next.filter(s => s.id.startsWith('local-')));
       return next;
     });
+
+    console.info('Criação do conjunto de lembretes concluída', {
+      count: newOnes.length,
+      durationMs: Math.round(performance.now() - batchStartedAt),
+      remote,
+      local,
+      skipped,
+    });
+
+    return { remote, local, skipped, remoteItems, localItems, skippedItems };
   };
 
   const saveManualSchedule = async (input: ManualScheduleInput) => {
@@ -114,7 +179,7 @@ export function useSchedules() {
       input.notificationService === 'googleChat' || input.notificationService === 'both';
 
     const payload = {
-      days: input.day,
+      days: input.days.join(','),
       time: input.time,
       message,
       title: input.title.trim(),
@@ -203,6 +268,7 @@ export function useSchedules() {
   return {
     schedules,
     loading,
+    apiError,
     addSchedules,
     saveManualSchedule,
     toggleSchedule,

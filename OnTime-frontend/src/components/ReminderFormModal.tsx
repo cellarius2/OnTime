@@ -2,16 +2,7 @@ import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { IoClose } from 'react-icons/io5';
 import type { NotificationService, Schedule } from '../types';
 import type { ManualScheduleInput } from '../hooks/useSchedules';
-
-const DAYS = [
-  { value: 'mon', label: 'Segunda-feira' },
-  { value: 'tue', label: 'Terça-feira' },
-  { value: 'wed', label: 'Quarta-feira' },
-  { value: 'thu', label: 'Quinta-feira' },
-  { value: 'fri', label: 'Sexta-feira' },
-  { value: 'sat', label: 'Sábado' },
-  { value: 'sun', label: 'Domingo' },
-];
+import { normalizeWeekdays, WEEKDAYS, type Weekday } from '../utils/weekdays';
 
 interface Props {
   schedule?: Schedule | null;
@@ -37,10 +28,14 @@ export function ReminderFormModal({
 
   const [title, setTitle] = useState(schedule?.title ?? schedule?.message ?? '');
   const [description, setDescription] = useState(schedule?.description ?? '');
-  const [day, setDay] = useState(schedule?.days.split(',')[0] ?? 'mon');
+  const [selectedDays, setSelectedDays] = useState<Weekday[]>(() => {
+    const savedDays = normalizeWeekdays(schedule?.days);
+    return savedDays.length > 0 ? savedDays : ['mon'];
+  });
   const [time, setTime] = useState(schedule?.time ?? '09:00');
   const [notificationService, setNotificationService] = useState<NotificationService>(initialService);
   const [active, setActive] = useState(schedule?.active ?? true);
+  const [daysError, setDaysError] = useState('');
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -54,18 +49,33 @@ export function ReminderFormModal({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!title.trim()) return;
+    if (selectedDays.length === 0) {
+      setDaysError('Selecione pelo menos um dia da semana.');
+      return;
+    }
 
     onSave({
       id: schedule?.id,
       title,
       description,
-      day,
+      days: selectedDays,
       time,
       notificationService,
       active,
       discordWebhookUrl,
       googleChatWebhookUrl,
     });
+  };
+
+  const toggleDay = (day: Weekday) => {
+    setSelectedDays(previous => {
+      const next = previous.includes(day)
+        ? previous.filter(selected => selected !== day)
+        : [...previous, day];
+
+      return normalizeWeekdays(next);
+    });
+    setDaysError('');
   };
 
   return (
@@ -102,26 +112,38 @@ export function ReminderFormModal({
             placeholder="Detalhes adicionais do lembrete"
           />
 
-          <div className="form-grid">
-            <div>
-              <label htmlFor="reminder-day">Dia da semana</label>
-              <select id="reminder-day" value={day} onChange={event => setDay(event.target.value)}>
-                {DAYS.map(item => (
-                  <option key={item.value} value={item.value}>{item.label}</option>
-                ))}
-              </select>
-            </div>
+          <fieldset className="weekday-field" aria-describedby={daysError ? 'weekday-error' : undefined}>
+            <legend>Dias da semana</legend>
+            <div className="weekday-options">
+              {WEEKDAYS.map(day => {
+                const selected = selectedDays.includes(day.value);
 
-            <div>
-              <label htmlFor="reminder-time">Horário</label>
-              <input
-                id="reminder-time"
-                type="time"
-                value={time}
-                onChange={event => setTime(event.target.value)}
-                required
-              />
+                return (
+                  <button
+                    key={day.value}
+                    className={`weekday-button ${selected ? 'weekday-button--selected' : ''}`}
+                    type="button"
+                    aria-pressed={selected}
+                    aria-label={day.label}
+                    onClick={() => toggleDay(day.value)}
+                  >
+                    {day.shortLabel}
+                  </button>
+                );
+              })}
             </div>
+            {daysError && <p id="weekday-error" className="weekday-error" role="alert">{daysError}</p>}
+          </fieldset>
+
+          <div>
+            <label htmlFor="reminder-time">Horário</label>
+            <input
+              id="reminder-time"
+              type="time"
+              value={time}
+              onChange={event => setTime(event.target.value)}
+              required
+            />
           </div>
 
           <label>Canal de notificação</label>

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import type { ChatMessage, JonasResponse, NotificationService } from '../types';
-import { chatWithJonas } from '../api/client';
+import { chatWithJonas, isApiConfigurationError } from '../api/client';
+import { buildSaveMessage } from '../utils/chatMessages';
 import jonasMark from '../assets/jonas-mark.png';
 
 interface Props {
@@ -11,13 +12,20 @@ interface Props {
     schedules: Array<{ days: string[]; time: string; message: string }>,
     webhookUrl: string,
     service?: NotificationService
-  ) => void | Promise<void>;
+  ) => Promise<{
+    remote: number;
+    local: number;
+    skipped: number;
+    remoteItems: string[];
+    localItems: string[];
+    skippedItems: string[];
+  }>;
 }
 
 const INITIAL_MESSAGE: ChatMessage = {
   role: 'jonas',
   content:
-    'Oi! Eu sou o Jonas, seu ouriço de ponto! 🦔 Me conta: em quais dias e horários você quer ser lembrado de bater o ponto?',
+    'Oi! Eu sou o Jonas, o ouriço que leva pontualidade um pouco a sério demais. 🦔 Qual horário merece colocar meus espinhos em alerta?',
 };
 
 const stripMarkdownJson = (value: string) => {
@@ -93,7 +101,10 @@ export function JonasChatWidget({
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState('');
+  const [canCancel, setCanCancel] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
+  const requestControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const container = messagesRef.current;
@@ -101,6 +112,8 @@ export function JonasChatWidget({
 
     container.scrollTop = container.scrollHeight;
   }, [messages, loading]);
+
+  useEffect(() => () => requestControllerRef.current?.abort(), []);
 
   const toApiRole = (role: ChatMessage['role']) =>
     role === 'jonas' ? 'assistant' : 'user';
@@ -133,9 +146,14 @@ export function JonasChatWidget({
     setInput('');
     setMessages(previous => [...previous, { role: 'user', content: userMessage }]);
     setLoading(true);
+    setCanCancel(true);
+    setLoadingText('O Jonas está organizando seus horários… 🦔');
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
 
     try {
-      const { data } = await chatWithJonas(userMessage, history);
+      const { data } = await chatWithJonas(userMessage, history, controller.signal);
+      setCanCancel(false);
 
       console.log('Resposta da API:', data);
 
@@ -149,8 +167,6 @@ export function JonasChatWidget({
 
       const responseText = getJonasDisplayText(data, response);
 
-      setMessages(previous => [...previous, { role: 'jonas', content: responseText }]);
-
       const schedulesToSave = normalizeSchedulePayload(response.schedules);
 
       if (response.intent === 'save_schedule' && schedulesToSave.length > 0) {
@@ -160,20 +176,27 @@ export function JonasChatWidget({
             {
               role: 'jonas',
               content:
-                'Opa! Antes de salvar, você precisa configurar o webhook do serviço padrão nas configurações.',
+                'Opa! Antes de salvar, escolha um canal de avisos nas configurações.',
             },
           ]);
           return;
         }
 
         try {
-          await onSchedulesSaved(schedulesToSave, webhookUrl, notificationService);
+          setLoadingText('O Jonas terminou as contas e está salvando os lembretes…');
+          const result = await onSchedulesSaved(
+            schedulesToSave,
+            webhookUrl,
+            notificationService
+          );
+
+          const saveMessage = buildSaveMessage(schedulesToSave, result);
 
           setMessages(previous => [
             ...previous,
             {
               role: 'jonas',
-              content: 'Lembretes salvos com sucesso! Você pode vê-los no painel ao lado.',
+              content: saveMessage,
             },
           ]);
         } catch (error) {
@@ -183,17 +206,28 @@ export function JonasChatWidget({
             ...previous,
             {
               role: 'jonas',
-              content: 'Tive um problema ao salvar os lembretes. Tente novamente em instantes.',
+              content: 'Meus espinhos detectaram um problema ao salvar. Nenhum novo lembrete foi confirmado; confira a conexão e tente novamente.',
             },
           ]);
         }
+      } else {
+        setMessages(previous => [...previous, { role: 'jonas', content: responseText }]);
       }
     } catch (error) {
       console.error('Erro ao conversar com Jonas:', error);
 
-      const errorMessage = axios.isAxiosError(error) && error.code === 'ECONNABORTED'
-        ? 'Minha automação demorou um pouquinho para responder. Tente enviar novamente em alguns segundos.'
-        : 'Não consegui falar com minha automação agora. Tente novamente em alguns segundos.';
+      const wasCanceled = axios.isAxiosError(error) && error.code === 'ERR_CANCELED';
+      const timedOut = axios.isAxiosError(error) &&
+        (error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED');
+      const errorMessage = wasCanceled
+        ? 'Tudo bem, parei o relógio por aqui. Nenhum lembrete desse pedido foi confirmado; pode tentar novamente quando quiser. 🦔'
+        : isApiConfigurationError(error)
+        ? 'Não encontrei a conexão do OnTime. Confira as configurações do frontend e reinicie a página.'
+        : timedOut
+          ? 'Meu relógio cansou antes de mim. Pode tentar de novo ou criar o lembrete pelo painel?'
+          : axios.isAxiosError(error) && error.response?.status === 404
+            ? 'Não encontrei o caminho do chat do Jonas. Confira as configurações e reinicie a página.'
+            : 'Não consegui falar com minha automação agora. Tente novamente em alguns segundos.';
 
       setMessages(previous => [
         ...previous,
@@ -203,8 +237,18 @@ export function JonasChatWidget({
         },
       ]);
     } finally {
+      if (requestControllerRef.current === controller) {
+        requestControllerRef.current = null;
+      }
       setLoading(false);
+      setLoadingText('');
+      setCanCancel(false);
     }
+  };
+
+  const cancel = () => {
+    setCanCancel(false);
+    requestControllerRef.current?.abort();
   };
 
   return (
@@ -231,10 +275,13 @@ export function JonasChatWidget({
               <img src={jonasMark} alt="" />
             </span>
 
-            <div className="chat-bubble chat-bubble--typing">
-              <span />
-              <span />
-              <span />
+            <div className="chat-bubble chat-bubble--waiting">
+              <p>{loadingText}</p>
+              {canCancel && (
+                <button type="button" className="chat-cancel" onClick={cancel}>
+                  Cancelar espera
+                </button>
+              )}
             </div>
           </div>
         )}

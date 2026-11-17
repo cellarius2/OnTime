@@ -801,6 +801,7 @@ a {
   margin: 0;
   font-size: 14px;
   line-height: 1.55;
+  white-space: pre-line;
 }
 
 .chat-time {
@@ -884,6 +885,30 @@ a {
 
 .chat-bubble--typing span:nth-child(3) {
   animation-delay: 0.4s;
+}
+
+.chat-bubble--waiting {
+  display: grid;
+  max-width: min(82%, 360px);
+  gap: 10px;
+}
+
+.chat-cancel {
+  width: fit-content;
+  padding: 6px 10px;
+  border: 1px solid rgba(157, 222, 118, 0.42);
+  border-radius: 7px;
+  background: transparent;
+  color: #9dde76;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chat-cancel:hover,
+.chat-cancel:focus-visible {
+  border-color: #9dde76;
+  outline: none;
 }
 
 .panel-leaf {
@@ -1385,6 +1410,61 @@ a {
   margin-top: 0;
 }
 
+.weekday-field {
+  min-width: 0;
+  margin: 14px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.weekday-field legend {
+  margin-bottom: 8px;
+  color: #d8dfd7;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.weekday-options {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.weekday-button {
+  min-width: 0;
+  min-height: 38px;
+  padding: 6px 4px;
+  border: 1px solid rgba(85, 108, 118, 0.4);
+  border-radius: 7px;
+  background: rgba(22, 31, 38, 0.9);
+  color: #aeb9c1;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.weekday-button:hover {
+  border-color: rgba(139, 205, 103, 0.58);
+}
+
+.weekday-button:focus-visible {
+  outline: 2px solid #8bd866;
+  outline-offset: 2px;
+}
+
+.weekday-button--selected {
+  border-color: rgba(139, 205, 103, 0.85);
+  background: rgba(46, 74, 38, 0.48);
+  color: #8bd866;
+}
+
+.weekday-error {
+  margin: 7px 0 0;
+  color: #f19484;
+  font-size: 12px;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1627,6 +1707,10 @@ a {
   .modal-tabs {
     grid-template-columns: 1fr;
     flex-wrap: wrap;
+  }
+
+  .weekday-options {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

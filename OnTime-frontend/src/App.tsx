@@ -17,6 +17,7 @@ export default function App() {
   const {
     schedules,
     loading,
+    apiError,
     addSchedules,
     saveManualSchedule,
     toggleSchedule,
@@ -255,6 +256,8 @@ export default function App() {
                   <h2>Seus lembretes</h2>
                   <span className="badge">{activeSchedules} ativos</span>
                 </div>
+
+                {apiError && <p className="loading" role="alert">{apiError}</p>}
 
                 {loading ? (
                   <p className="loading">Carregando...</p>

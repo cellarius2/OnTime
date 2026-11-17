@@ -1,15 +1,20 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OnTime.API.Models;
+using System.Diagnostics;
 using System.Text.Json;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ChatController(N8nService n8n, AppDbContext db) : ControllerBase
+public class ChatController(
+    JonasAiService jonas, AppDbContext db, ILogger<ChatController> logger) : ControllerBase
 {
     [HttpPost]
-    public async Task<IActionResult> Chat([FromBody] ChatRequest request)
+    public async Task<IActionResult> Chat([FromBody] ChatRequest request, CancellationToken ct)
     {
-        var raw = await n8n.SendChatMessageAsync(request);
+        var total = Stopwatch.StartNew();
+        var ai = Stopwatch.StartNew();
+        var raw = await jonas.SendChatMessageAsync(request, ct);
+        logger.LogInformation("Jonas respondeu ao chat em {ElapsedMs} ms", ai.ElapsedMilliseconds);
 
         var text = ExtractString(raw.Text, "text") ?? raw.Text?.ToString() ?? "";
         var intent = ExtractString(raw.Text, "intent") ?? raw.Intent ?? "chat";
@@ -20,7 +25,11 @@ public class ChatController(N8nService n8n, AppDbContext db) : ControllerBase
             Message = request.Message,
             Response = text,
         });
-        await db.SaveChangesAsync();
+        var persistence = Stopwatch.StartNew();
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation(
+            "Conversa persistida em {PersistenceMs} ms; requisição de chat concluída em {TotalMs} ms",
+            persistence.ElapsedMilliseconds, total.ElapsedMilliseconds);
 
         return Ok(new { text, intent, schedules });
     }

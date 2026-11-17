@@ -25,6 +25,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 builder.Services.AddHttpClient<N8nService>();
+builder.Services.AddHttpClient<JonasAiService>(client =>
+    client.Timeout = Timeout.InfiniteTimeSpan);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -76,3 +78,5 @@ if (builder.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 }
 
 app.Run();
+
+public partial class Program;

@@ -2,29 +2,11 @@ import { FaRegClock } from 'react-icons/fa';
 import { FiEdit2 } from 'react-icons/fi';
 import { LuClipboardList } from 'react-icons/lu';
 import type { Schedule } from '../types';
+import { normalizeWeekdays, WEEKDAYS } from '../utils/weekdays';
 
-const DAY_LABELS: Record<string, string> = {
-  mon: 'Seg',
-  tue: 'Ter',
-  wed: 'Qua',
-  thu: 'Qui',
-  fri: 'Sex',
-  sat: 'Sáb',
-  sun: 'Dom',
-};
-
-function normalizeDays(days: string | string[] | undefined) {
-  if (!days) return [];
-
-  if (Array.isArray(days)) {
-    return days;
-  }
-
-  return days
-    .split(',')
-    .map(day => day.trim())
-    .filter(Boolean);
-}
+const DAY_LABELS = Object.fromEntries(
+  WEEKDAYS.map(day => [day.value, day.shortLabel])
+) as Record<string, string>;
 
 function getCleanMessage(schedule: Schedule) {
   const rawMessage = schedule.message || '';
@@ -122,7 +104,7 @@ export function SchedulePanel({
           </div>
         ) : (
           schedules.map(schedule => {
-            const days = normalizeDays(schedule.days);
+            const days = normalizeWeekdays(schedule.days);
             const reminderTitle = getReminderTitle(schedule);
 
             return (
